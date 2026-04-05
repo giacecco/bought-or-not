@@ -66,13 +66,13 @@ Best practice: include an about-us section or file describing who the publisher 
 
 ### Nicknames
 
-Users are identified by their git repository URL, but URLs are hard to read. Any file can declare nicknames at the top:
+Users are identified by their git repository URL, but URLs are hard to read. Any file can declare nicknames at the top using Markdown reference link syntax:
 
 ```
-In the following, I call https://github.com/giacecco/bought-or-not-test-soil-association the Soil Association.
+[the Soil Association]: https://github.com/giacecco/bought-or-not-test-soil-association
 ```
 
-The nickname can then be used naturally throughout the file in any statement.
+The nickname can then be used naturally throughout the file in any statement. Each file declares its own nicknames.
 
 All files include the comment: `<!-- Statements listed earlier take priority over later ones -->`
 

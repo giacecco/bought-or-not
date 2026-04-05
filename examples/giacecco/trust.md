@@ -2,9 +2,9 @@
 
 <!-- Statements listed earlier take priority over later ones -->
 
-In the following, I call https://github.com/giacecco/bought-or-not-test-soil-association the Soil Association.
-In the following, I call https://github.com/giacecco/bought-or-not-test-paola Paola.
-In the following, I call https://github.com/giacecco/bought-or-not-test-robert-leach Robert Leach.
+[the Soil Association]: https://github.com/giacecco/bought-or-not-test-soil-association
+[Paola]: https://github.com/giacecco/bought-or-not-test-paola
+[Robert Leach]: https://github.com/giacecco/bought-or-not-test-robert-leach
 
 ## Organic food
 - I trust the Soil Association's information and rules 90%

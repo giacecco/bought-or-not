@@ -2,7 +2,7 @@
 
 <!-- Statements listed earlier take priority over later ones -->
 
-In the following, I call https://github.com/giacecco/bought-or-not-test-soil-association the Soil Association.
+[the Soil Association]: https://github.com/giacecco/bought-or-not-test-soil-association
 
 ## Organic food
 - I trust the Soil Association's information and rules 100%
