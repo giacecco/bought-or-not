@@ -93,7 +93,7 @@ const cached = await getCachedAssessment(values.user, values.barcode, threshold)
 if (cached) {
   const expiresAt = new Date(cached.expiresAt);
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  const expiresStr = `${expiresAt.getDate()} ${months[expiresAt.getMonth()]} ${expiresAt.getFullYear()}, ${expiresAt.toLocaleTimeString()}`;
+  const expiresStr = `${expiresAt.getDate()} ${months[expiresAt.getMonth()]} ${expiresAt.getFullYear()}, ${expiresAt.getHours().toString().padStart(2, "0")}:${expiresAt.getMinutes().toString().padStart(2, "0")}`;
   console.log(`Using cached assessment for barcode ${values.barcode} (valid until ${expiresStr})\n`);
   displayResult(cached.result, cached.nicknames, true, buyThreshold);
   process.exit(0);
