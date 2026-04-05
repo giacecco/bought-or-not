@@ -131,8 +131,8 @@ Use `--no-cache` to clear all caches and force a fresh run.
 # Nutella — not organic, contains palm oil, questionable tax practices → Don't buy (1.6%)
 bun run index.ts --test --user https://github.com/giacecco/bought-or-not-test-giacecco --barcode 3017620422003
 
-# Nocciolata — Giacecco is 80% sure it's organic, but Paola and the Soil Association
-# confirm at 100%, boosting the score beyond first-hand confidence → Buy (100.0%)
+# Nocciolata — Giacecco is 80% sure it's organic, but the Soil Association
+# confirms at 100% (trust decayed to 95% at hop 2), boosting the score → Buy (99.5%)
 bun run index.ts --test --user https://github.com/giacecco/bought-or-not-test-giacecco --barcode 8052575090254
 ```
 
