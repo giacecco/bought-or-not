@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { callLLM, parseJSON } from "./llm";
 
 export interface ParsedInfo {
   context: string;
@@ -26,33 +26,6 @@ export interface ParsedRepo {
   information: ParsedInfo[];
   rules: ParsedRule[];
   trust: ParsedTrust[];
-}
-
-const client = new Anthropic();
-
-async function callLLM(
-  prompt: string,
-  model: string
-): Promise<string> {
-  const response = await client.messages.create({
-    model,
-    max_tokens: 4096,
-    messages: [{ role: "user", content: prompt }],
-  });
-  const block = response.content[0];
-  if (block.type !== "text") throw new Error("Unexpected response type");
-  // Strip markdown code fences if the LLM wrapped the JSON
-  return block.text.replace(/^```(?:json)?\s*\n?/m, "").replace(/\n?```\s*$/m, "").trim();
-}
-
-function parseJSON<T>(text: string): T {
-  try {
-    return JSON.parse(text);
-  } catch {
-    const match = text.match(/\[[\s\S]*\]/);
-    if (match) return JSON.parse(match[0]);
-    throw new Error(`Failed to parse JSON from LLM response: ${text}`);
-  }
 }
 
 export async function parseRepoFiles(

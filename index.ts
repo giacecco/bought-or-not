@@ -2,6 +2,7 @@ import { parseArgs } from "util";
 import { fetchRepo } from "./src/fetcher";
 import { parseRepoFiles, type ParsedRepo } from "./src/parser";
 import { computeScore } from "./src/scorer";
+import { setBackend } from "./src/llm";
 
 const { values } = parseArgs({
   args: Bun.argv.slice(2),
@@ -9,16 +10,24 @@ const { values } = parseArgs({
     user: { type: "string" },
     barcode: { type: "string" },
     threshold: { type: "string", default: "1" },
+    test: { type: "boolean", default: false },
   },
   strict: true,
 });
 
 if (!values.user || !values.barcode) {
   console.error("Usage: bun run index.ts --user <repo-url> --barcode <barcode>");
+  console.error("       bun run index.ts --test --user <repo-url> --barcode <barcode>");
   console.error("  --user       GitHub repo URL of the user");
   console.error("  --barcode    Product barcode to evaluate");
   console.error("  --threshold  Trust/certainty cutoff % (default: 1)");
+  console.error("  --test       Use Claude Code CLI instead of API (no API key needed)");
   process.exit(1);
+}
+
+if (values.test) {
+  setBackend("cli");
+  console.log("\nUsing Claude Code CLI backend (no API key needed).\n");
 }
 
 const threshold = parseFloat(values.threshold!);

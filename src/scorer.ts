@@ -1,7 +1,5 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { callLLM, parseJSON } from "./llm";
 import type { ParsedRepo, ParsedInfo, ParsedRule } from "./parser";
-
-const client = new Anthropic();
 
 export interface RuleScore {
   rule: ParsedRule;
@@ -275,26 +273,3 @@ ${statements}`;
     .filter(Boolean) as MatchedInfo[];
 }
 
-async function callLLM(prompt: string, model: string): Promise<string> {
-  const response = await client.messages.create({
-    model,
-    max_tokens: 4096,
-    messages: [{ role: "user", content: prompt }],
-  });
-  const block = response.content[0];
-  if (block.type !== "text") throw new Error("Unexpected response type");
-  const text = block.text.replace(/^```(?:json)?\s*\n?/m, "").replace(/\n?```\s*$/m, "").trim();
-  return text;
-}
-
-function parseJSON<T>(text: string): T {
-  // Try direct parse first
-  try {
-    return JSON.parse(text);
-  } catch {
-    // Try to extract the first JSON array (non-greedy)
-    const match = text.match(/\[.*?\]/s);
-    if (match) return JSON.parse(match[0]);
-    throw new Error(`Failed to parse JSON from LLM response: ${text}`);
-  }
-}
