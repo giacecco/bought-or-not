@@ -32,7 +32,7 @@ async function callAPI(prompt: string, model: string): Promise<string> {
 }
 
 async function callCLI(prompt: string, model: string): Promise<string> {
-  const modelFlag = model.includes("haiku") ? "haiku" : "sonnet";
+  const modelFlag = model.includes("haiku") ? "haiku" : model.includes("opus") ? "opus" : "sonnet";
   const proc = Bun.spawn(["claude", "-p", "--model", modelFlag, "--output-format", "json", prompt], {
     stdout: "pipe",
     stderr: "pipe",
