@@ -76,7 +76,7 @@ The nickname can then be used naturally throughout the file in any statement. Ea
 
 All files include the comment: `<!-- Statements listed earlier take priority over later ones -->`
 
-See the `examples/` directory for a complete worked example with multiple users.
+For a complete worked example with four users, see the test repos listed in CLAUDE.md.
 
 ## Role of the LLM
 

@@ -17,7 +17,6 @@ Bought Or Not is a decentralised, trust-based decision engine for purchasing dec
 - `src/fetcher.ts` — clones repos, caches them in `.cache/` for 24 hours, caches parsed results
 - `src/parser.ts` — sends Markdown files to LLM, returns structured data (ParsedInfo, ParsedRule, ParsedTrust)
 - `src/scorer.ts` — trust graph traversal, rule collection, information matching, scoring formula
-- `examples/` — worked example with four users (giacecco, paola, soil-association, robert-leach) demonstrating the Nutella scenario
 - `.env` — Anthropic API key (gitignored)
 - `.cache/` — cached repos and parsed results (gitignored)
 
