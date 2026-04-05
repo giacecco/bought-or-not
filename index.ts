@@ -1,5 +1,5 @@
 import { parseArgs } from "util";
-import { fetchRepo, clearCache } from "./src/fetcher";
+import { fetchRepo, clearCache, getCachedParsed, saveParsedCache } from "./src/fetcher";
 import { parseRepoFiles, type ParsedRepo } from "./src/parser";
 import { computeScore } from "./src/scorer";
 import { setBackend } from "./src/llm";
@@ -29,10 +29,10 @@ if (!values.user || !values.barcode) {
 
 if (values.test) {
   setBackend("cli");
-  console.log("\nUsing Claude Code CLI backend (no API key needed).");
+  console.log("\nUsing Claude Code CLI backend (no API key needed).\n");
 }
 
-if (values.test || values["no-cache"]) {
+if (values["no-cache"]) {
   await clearCache();
   console.log("  Cache cleared.\n");
 }
@@ -41,23 +41,38 @@ const threshold = parseFloat(values.threshold!);
 
 console.log(`Fetching repos and walking trust chain...\n`);
 
-// Fetch and parse repos recursively
 const parsedRepos = new Map<string, ParsedRepo>();
+const inFlight = new Set<string>();
 
 async function fetchAndParse(repoUrl: string): Promise<void> {
-  if (parsedRepos.has(repoUrl)) return;
+  if (parsedRepos.has(repoUrl) || inFlight.has(repoUrl)) return;
+  inFlight.add(repoUrl);
 
+  // Check for cached parsed result first
+  const cachedParsed = await getCachedParsed(repoUrl);
+  if (cachedParsed) {
+    console.log(`  Using cached + parsed ${repoUrl}`);
+    parsedRepos.set(repoUrl, cachedParsed);
+    // Walk trust edges in parallel
+    const nextUrls = cachedParsed.trust
+      .filter((t) => t.trustPercent >= threshold)
+      .map((t) => t.repoUrl);
+    await Promise.all(nextUrls.map(fetchAndParse));
+    return;
+  }
+
+  // Fetch and parse
   const repoFiles = await fetchRepo(repoUrl);
   console.log(`  Parsing ${repoUrl}...`);
   const parsed = await parseRepoFiles(repoUrl, repoFiles.files);
   parsedRepos.set(repoUrl, parsed);
+  await saveParsedCache(repoUrl, parsed);
 
-  // Recursively fetch trusted repos
-  for (const trust of parsed.trust) {
-    if (trust.trustPercent >= threshold) {
-      await fetchAndParse(trust.repoUrl);
-    }
-  }
+  // Walk trust edges in parallel
+  const nextUrls = parsed.trust
+    .filter((t) => t.trustPercent >= threshold)
+    .map((t) => t.repoUrl);
+  await Promise.all(nextUrls.map(fetchAndParse));
 }
 
 await fetchAndParse(values.user);

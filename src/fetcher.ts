@@ -1,6 +1,7 @@
-import { mkdtemp, readdir, readFile, mkdir, writeFile, stat, rm } from "fs/promises";
+import { readdir, readFile, mkdir, writeFile, rm } from "fs/promises";
 import { join } from "path";
 import { createHash } from "crypto";
+import type { ParsedRepo } from "./parser";
 
 const CACHE_DIR = join(import.meta.dir, "..", ".cache");
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
@@ -20,20 +21,48 @@ function cacheMetaPath(dir: string): string {
   return join(dir, ".bon-cache-meta.json");
 }
 
-async function isCacheValid(dir: string): Promise<boolean> {
+function parsedCachePath(dir: string): string {
+  return join(dir, ".bon-parsed.json");
+}
+
+interface CacheMeta {
+  cachedAt: number;
+  repoUrl: string;
+}
+
+async function readCacheMeta(dir: string): Promise<CacheMeta | null> {
   try {
-    const meta = JSON.parse(await readFile(cacheMetaPath(dir), "utf-8"));
-    const age = Date.now() - meta.cachedAt;
-    return age < CACHE_TTL_MS;
+    return JSON.parse(await readFile(cacheMetaPath(dir), "utf-8"));
   } catch {
-    return false;
+    return null;
   }
+}
+
+async function isCacheValid(dir: string): Promise<boolean> {
+  const meta = await readCacheMeta(dir);
+  if (!meta) return false;
+  return Date.now() - meta.cachedAt < CACHE_TTL_MS;
 }
 
 export async function clearCache(): Promise<void> {
   try {
     await rm(CACHE_DIR, { recursive: true, force: true });
   } catch {}
+}
+
+export async function getCachedParsed(repoUrl: string): Promise<ParsedRepo | null> {
+  const cacheDir = repoCacheDir(repoUrl);
+  if (!(await isCacheValid(cacheDir))) return null;
+  try {
+    return JSON.parse(await readFile(parsedCachePath(cacheDir), "utf-8"));
+  } catch {
+    return null;
+  }
+}
+
+export async function saveParsedCache(repoUrl: string, parsed: ParsedRepo): Promise<void> {
+  const cacheDir = repoCacheDir(repoUrl);
+  await writeFile(parsedCachePath(cacheDir), JSON.stringify(parsed));
 }
 
 export async function fetchRepo(repoUrl: string): Promise<RepoFiles> {
@@ -63,7 +92,6 @@ export async function fetchRepo(repoUrl: string): Promise<RepoFiles> {
     throw new Error(`Failed to clone ${repoUrl}: ${stderr}`);
   }
 
-  // Write cache metadata
   await writeFile(cacheMetaPath(cacheDir), JSON.stringify({ cachedAt: Date.now(), repoUrl }));
 
   const files = await readMarkdownFiles(cacheDir);
