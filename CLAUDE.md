@@ -20,7 +20,7 @@ Bought Or Not is a decentralised, trust-based decision engine for purchasing dec
 - `src/scorer.ts` — trust graph traversal, rule collection, information matching, scoring formula
 - `scripts/generate-off-repo.ts` — generates a Bought Or Not repo from Open Food Facts data (used for initial prototyping, superseded by API-backed approach)
 - `.env` — Anthropic API key (gitignored)
-- `.cache/` — cached repos and parsed results (gitignored)
+- `.cache/` — cached repos, parsed results, API responses, and assessment results (all 24h TTL, gitignored)
 
 ## Test repos
 Five public GitHub repos serve as test data:
@@ -41,9 +41,9 @@ Five public GitHub repos serve as test data:
 - The LLM parses and reasons over statements but never contributes its own information
 - Product-to-producer links are embedded inline in information statements
 - Information can be API-backed: instead of static statements, a repo's information.md can describe how to fetch data from an external API (with a URL template using `{barcode}` and instructions for interpreting the response). The system calls the API at query time and uses the LLM to produce concrete statements from the response.
-
-## Workflow
-- Before every commit, check if `README.md` and `CLAUDE.md` need updating and update them if there are relevant changes (new features, CLI flags, files, design decisions, expected output, etc.)
+- Three layers of caching (all 24h TTL, cleared by `--no-cache`): repo clones + parsed results, external API responses, and full assessment results (score + all sources)
+- Output uses nicknames (from the user's trust.md reference links) instead of raw repo URLs
+- Output distinguishes certainty (truth of the fact) from satisfaction (whether the rule is met)
 
 ## Running
 ```bash

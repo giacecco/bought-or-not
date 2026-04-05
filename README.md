@@ -50,7 +50,7 @@ When you query a product, the system:
 
 1. Collects all relevant rules from your repo and trusted sources (closer rules override more distant ones).
 2. For each rule, finds all relevant information from trusted sources.
-3. Scales each source's certainty by trust: `effective_certainty = trust × certainty`.
+3. For each source, the LLM determines how much the information satisfies the rule (satisfaction). Scales by trust: `effective_certainty = trust × satisfaction`.
 4. Combines multiple sources using "at least one is right": `combined_certainty = 1 - Π(1 - effective_certainty_i)`. This ensures that adding corroborating sources can never decrease certainty.
 5. Computes the weighted average: `score = Σ(weight × combined_certainty) / Σ(weight)`.
 
@@ -113,7 +113,13 @@ bun run index.ts --user <repo-url> --barcode <barcode>
 
 ### Caching
 
-Cloned repos and their parsed LLM results are cached in `.cache/` for 24 hours. Cached runs skip all parsing LLM calls. Use `--no-cache` to force a fresh fetch.
+Three layers of caching in `.cache/`, all with 24-hour TTL:
+
+1. **Repo clones + parsed results** — skip git clone and LLM parsing on repeat runs
+2. **API responses** — skip external API calls (e.g. Open Food Facts) for the same barcode
+3. **Full assessments** — skip everything: instant results with full breakdown from cache
+
+Use `--no-cache` to clear all caches and force a fresh run.
 
 ### LLM backends
 
