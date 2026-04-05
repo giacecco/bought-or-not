@@ -91,7 +91,8 @@ function displayResult(result: ScoreResult, nicknames: Record<string, string>, c
 // Check for cached assessment
 const cached = await getCachedAssessment(values.user, values.barcode, threshold);
 if (cached) {
-  console.log(`Using cached assessment for barcode ${values.barcode}\n`);
+  const expiresAt = new Date(cached.expiresAt);
+  console.log(`Using cached assessment for barcode ${values.barcode} (valid until ${expiresAt.toLocaleString()})\n`);
   displayResult(cached.result, cached.nicknames, true, buyThreshold);
   process.exit(0);
 }

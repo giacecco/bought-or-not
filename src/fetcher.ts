@@ -86,6 +86,7 @@ interface AssessmentCache {
 export interface CachedAssessment {
   result: ScoreResult;
   nicknames: Record<string, string>;
+  expiresAt: number;
 }
 
 export async function getCachedAssessment(
@@ -97,7 +98,7 @@ export async function getCachedAssessment(
   try {
     const data: AssessmentCache = JSON.parse(await readFile(path, "utf-8"));
     if (Date.now() - data.cachedAt >= CACHE_TTL_MS) return null;
-    return { result: data.result, nicknames: data.nicknames || {} };
+    return { result: data.result, nicknames: data.nicknames || {}, expiresAt: data.cachedAt + CACHE_TTL_MS };
   } catch {
     return null;
   }
