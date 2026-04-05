@@ -1,9 +1,8 @@
 import { mkdtemp, readdir, readFile, mkdir, writeFile, stat, rm } from "fs/promises";
 import { join } from "path";
-import { tmpdir, homedir } from "os";
 import { createHash } from "crypto";
 
-const CACHE_DIR = join(homedir(), ".bought-or-not", "cache");
+const CACHE_DIR = join(import.meta.dir, "..", ".cache");
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 export interface RepoFiles {
