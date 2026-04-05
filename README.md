@@ -24,9 +24,9 @@ Example: "I weigh 60 eating food certified to be organic"
 
 ### Trust
 
-How much you trust another user's information and/or rules, scoped by context.
+How much you trust another user's information and/or rules, scoped by context. Users are identified by their git repository URL.
 
-Example: "I trust the Soil Association's information and rules 90%"
+Example: "I trust the information and rules at https://github.com/giacecco/bought-or-not-test-soil-association 90%"
 
 ## Key principles
 

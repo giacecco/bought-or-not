@@ -3,11 +3,11 @@
 <!-- Statements listed earlier take priority over later ones -->
 
 ## Organic food
-- I trust the Soil Association's information and rules 90%
-- I trust Paola's information and rules 100%
+- I trust the information and rules at https://github.com/giacecco/bought-or-not-test-soil-association 90%
+- I trust the information and rules at https://github.com/giacecco/bought-or-not-test-paola 100%
 
 ## Ingredients
-- I trust Paola's information and rules 100%
+- I trust the information and rules at https://github.com/giacecco/bought-or-not-test-paola 100%
 
 ## Tax practices
-- I trust Robert Leach's information 80%
+- I trust the information at https://github.com/giacecco/bought-or-not-test-robert-leach 80%
