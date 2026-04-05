@@ -13,6 +13,7 @@ const { values } = parseArgs({
     threshold: { type: "string", default: "1" },
     test: { type: "boolean", default: false },
     "no-cache": { type: "boolean", default: false },
+    "buy-threshold": { type: "string", default: "50" },
   },
   strict: true,
 });
@@ -25,6 +26,7 @@ if (!values.user || !values.barcode) {
   console.error("  --threshold  Trust/certainty cutoff % (default: 1)");
   console.error("  --test       Use Claude Code CLI instead of API (no API key needed)");
   console.error("  --no-cache   Clear cache and fetch fresh repos");
+  console.error("  --buy-threshold  Score threshold for Buy verdict (default: 50)");
   process.exit(1);
 }
 
@@ -39,12 +41,17 @@ if (values["no-cache"]) {
 }
 
 const threshold = parseFloat(values.threshold!);
+const buyThreshold = parseFloat(values["buy-threshold"]!);
 
-function displayResult(result: ScoreResult, nicknames: Record<string, string>, cached: boolean) {
+function displayResult(result: ScoreResult, nicknames: Record<string, string>, cached: boolean, buyThreshold: number) {
   const name = (url: string) => nicknames[url] || url;
 
   console.log(`═══════════════════════════════════════════`);
-  console.log(`  Bought Or Not — Score: ${result.score.toFixed(1)}%${cached ? " (cached)" : ""}`);
+  if (result.score < 0) {
+    console.log(`  Bought Or Not — Insufficient data${cached ? " (cached)" : ""}`);
+  } else {
+    console.log(`  Bought Or Not — Score: ${result.score.toFixed(1)}%${cached ? " (cached)" : ""}`);
+  }
   console.log(`═══════════════════════════════════════════\n`);
 
   if (result.ruleScores.length === 0) {
@@ -53,10 +60,14 @@ function displayResult(result: ScoreResult, nicknames: Record<string, string>, c
     for (const rs of result.ruleScores) {
       console.log(`  Rule: "${rs.rule.statement}" (weight: ${rs.rule.weight})`);
       console.log(`  Context: ${rs.rule.context}`);
-      console.log(`  Satisfaction: ${rs.combinedCertainty.toFixed(1)}%`);
-      if (rs.sources.length === 0) {
-        console.log(`  Sources: none found`);
+      if (!rs.hasData) {
+        console.log(`  Satisfaction: no data available`);
+      } else if (rs.combinedFor > 0 && rs.combinedAgainst > 0) {
+        console.log(`  Satisfaction: ${rs.combinedCertainty.toFixed(1)}% (for: ${rs.combinedFor.toFixed(1)}%, against: ${rs.combinedAgainst.toFixed(1)}%)`);
       } else {
+        console.log(`  Satisfaction: ${rs.combinedCertainty.toFixed(1)}%`);
+      }
+      if (rs.hasData) {
         for (const s of rs.sources) {
           console.log(
             `    - ${name(s.repoUrl)}: "${s.statement}" (certainty ${s.certainty.toFixed(0)}%, satisfaction ${s.satisfaction.toFixed(0)}%, trust ${s.trust.toFixed(0)}%, effective ${s.effectiveCertainty.toFixed(1)}%)`
@@ -67,17 +78,21 @@ function displayResult(result: ScoreResult, nicknames: Record<string, string>, c
     }
   }
 
-  console.log(`  Total weight: ${result.totalWeight}`);
-  console.log(
-    `  Verdict: ${result.score >= 50 ? "Buy" : "Don't buy"} (${result.score.toFixed(1)}%)\n`
-  );
+  if (result.score < 0) {
+    console.log(`  Verdict: Insufficient data — no rules had matching information\n`);
+  } else {
+    console.log(`  Total weight: ${result.totalWeight}`);
+    console.log(
+      `  Verdict: ${result.score >= buyThreshold ? "Buy" : "Don't buy"} (${result.score.toFixed(1)}%)\n`
+    );
+  }
 }
 
 // Check for cached assessment
 const cached = await getCachedAssessment(values.user, values.barcode, threshold);
 if (cached) {
   console.log(`Using cached assessment for barcode ${values.barcode}\n`);
-  displayResult(cached.result, cached.nicknames, true);
+  displayResult(cached.result, cached.nicknames, true, buyThreshold);
   process.exit(0);
 }
 
@@ -143,4 +158,4 @@ const userNicknames = parsedRepos.get(values.user)?.nicknames || {};
 
 await saveAssessmentCache(values.user, values.barcode, threshold, result, userNicknames);
 
-displayResult(result, userNicknames, false);
+displayResult(result, userNicknames, false, buyThreshold);

@@ -1,4 +1,4 @@
-import { callLLM, parseJSON } from "./llm";
+import { callLLM, parseJSON, buildPrompt } from "./llm";
 
 export interface ParsedInfo {
   context: string;
@@ -93,7 +93,7 @@ function extractNicknames(content: string): Record<string, string> {
 }
 
 async function parseTrust(content: string): Promise<ParsedTrust[]> {
-  const prompt = `Parse the following Markdown trust file into structured JSON.
+  const prompt = buildPrompt(`Parse the following Markdown trust file into structured JSON.
 
 The file may contain Markdown reference link definitions like:
 [nickname]: https://github.com/...
@@ -106,10 +106,7 @@ Return a JSON array where each element has:
 - "trustRules": true if trusting their rules
 - "trustPercent": the trust percentage as a number 0-100
 
-Return ONLY the JSON array, no other text.
-
-Content:
-${content}`;
+Return ONLY the JSON array, no other text.`, content);
 
   const result = await callLLM(prompt, "claude-haiku-4-5-20251001");
   return parseJSON(result);
@@ -118,17 +115,14 @@ ${content}`;
 async function parseRules(content: string): Promise<ParsedRule[]> {
   if (!content.trim()) return [];
 
-  const prompt = `Parse the following Markdown rules into structured JSON.
+  const prompt = buildPrompt(`Parse the following Markdown rules into structured JSON.
 
 Return a JSON array where each element has:
 - "context": the section heading (e.g. "Organic food")
 - "statement": the rule statement (e.g. "eating food certified to be organic")
 - "weight": the weight as a number 0-100
 
-Return ONLY the JSON array, no other text.
-
-Content:
-${content}`;
+Return ONLY the JSON array, no other text.`, content);
 
   const result = await callLLM(prompt, "claude-haiku-4-5-20251001");
   return parseJSON(result);
@@ -137,7 +131,7 @@ ${content}`;
 async function parseInformation(content: string): Promise<any[]> {
   if (!content.trim()) return [];
 
-  const prompt = `Parse the following Markdown information file into structured JSON.
+  const prompt = buildPrompt(`Parse the following Markdown information file into structured JSON.
 
 Ignore any "About us" sections.
 
@@ -158,10 +152,7 @@ There are two kinds of entries:
    - "apiUrlTemplate": the API URL exactly as written, preserving any {barcode} placeholder
    - "instructions": the full text describing how to call the API and interpret the response
 
-Return ONLY a JSON array, no other text.
-
-Content:
-${content}`;
+Return ONLY a JSON array, no other text.`, content);
 
   const result = await callLLM(prompt, "claude-opus-4-6");
   return parseJSON(result);

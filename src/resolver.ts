@@ -1,11 +1,43 @@
 import { readFile, writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { createHash } from "crypto";
-import { callLLM, parseJSON } from "./llm";
+import { callLLM, parseJSON, buildPrompt } from "./llm";
 import type { ApiInfo, ParsedInfo } from "./parser";
 
 const USER_AGENT =
   "BoughtOrNot/1.0 (https://github.com/giacecco/bought-or-not)";
+
+function isPrivateIP(ip: string): boolean {
+  const parts = ip.split(".").map(Number);
+  if (parts.length === 4 && parts.every((p) => !isNaN(p))) {
+    const [a, b] = parts;
+    if (a === 127) return true;
+    if (a === 10) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+    if (a === 169 && b === 254) return true;
+    if (a === 0) return true;
+  }
+  if (ip === "::1") return true;
+  if (ip.startsWith("fe80:")) return true;
+  if (ip.startsWith("fc") || ip.startsWith("fd")) return true;
+  const mapped = ip.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i);
+  if (mapped) return isPrivateIP(mapped[1]);
+  return false;
+}
+
+async function validateUrl(url: string): Promise<void> {
+  const parsed = new URL(url);
+  if (parsed.protocol !== "https:") {
+    throw new Error(`SSRF protection: only HTTPS URLs allowed, got ${parsed.protocol}`);
+  }
+  const addresses = await Bun.dns.resolve(parsed.hostname);
+  for (const addr of addresses) {
+    if (isPrivateIP(addr.address)) {
+      throw new Error(`SSRF protection: ${parsed.hostname} resolves to private IP ${addr.address}`);
+    }
+  }
+}
 const CACHE_DIR = join(import.meta.dir, "..", ".cache", "api-responses");
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -35,6 +67,7 @@ async function fetchWithCache(url: string): Promise<string | null> {
   // Fetch fresh
   console.log(`    Fetching ${url}...`);
   try {
+    await validateUrl(url);
     const response = await fetch(url, {
       headers: { "User-Agent": USER_AGENT },
     });
@@ -84,13 +117,7 @@ export async function resolveApiInfo(
       )
       .join("\n\n");
 
-    const prompt = `You have the following API response for a product with barcode "${barcode}":
-
-${apiResponse}
-
-For each of the following contexts, follow the instructions to produce a factual statement about this product.
-
-${contextList}
+    const prompt = buildPrompt(`For each of the following contexts, follow the instructions to produce a factual statement about the product with barcode "${barcode}" based on the API response below.
 
 For each context, return a JSON object with:
 - "index": the context index number
@@ -100,7 +127,7 @@ For each context, return a JSON object with:
 
 If the API response lacks sufficient data for a context, omit that context from the results.
 
-Return ONLY a JSON array of these objects, no other text.`;
+Return ONLY a JSON array of these objects, no other text.`, `API Response:\n${apiResponse}\n\nContexts:\n${contextList}`);
 
     const result = await callLLM(prompt, "claude-opus-4-6");
     try {

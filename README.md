@@ -48,11 +48,13 @@ Example: "I trust the information and rules at https://github.com/giacecco/bough
 
 When you query a product, the system:
 
-1. Collects all relevant rules from your repo and trusted sources (closer rules override more distant ones).
-2. For each rule, finds all relevant information from trusted sources.
+1. Collects all relevant rules from your repo and trusted sources. Trust context scoping ensures that rules are only collected from a trusted repo when their context matches the trust edge's context (e.g., trusting someone for "Organic food" only collects their organic-related rules). The LLM determines context matches.
+2. For each rule, finds all relevant information from trusted sources (also context-scoped).
 3. For each source, the LLM determines how much the information satisfies the rule (satisfaction). Scales by trust: `effective_certainty = trust × satisfaction`.
-4. Combines multiple sources using "at least one is right": `combined_certainty = 1 - Π(1 - effective_certainty_i)`. This ensures that adding corroborating sources can never decrease certainty.
-5. Computes the weighted average: `score = Σ(weight × combined_certainty) / Σ(weight)`.
+4. Sources are split into "for" (satisfaction > 50%) and "against" (satisfaction ≤ 50%). Each group is combined using "at least one is right": `combined = 1 - Π(1 - effective_certainty_i)`. For the "against" group, satisfaction is inverted to get anti-certainty. The net result is `combined_for - combined_against`, clamped to [0, 100]. This means contradictory evidence reduces the score rather than being silently ignored.
+5. Rules with no matching information are excluded from the score (reported as "no data available" rather than dragging the score toward zero).
+6. Computes the weighted average: `score = Σ(weight × combined_certainty) / Σ(weight)`. If all rules lack data, the verdict is "Insufficient data".
+7. When multiple trust paths reach the same repo (diamond topology), the highest-trust path is used.
 
 A high score means buying is the right choice. A low score means it isn't.
 
@@ -110,6 +112,7 @@ bun run index.ts --user <repo-url> --barcode <barcode>
 - `--threshold` — Trust/certainty cutoff % (default: 1)
 - `--test` — Use Claude Code CLI instead of the Anthropic API (no API key needed, uses your Claude subscription)
 - `--no-cache` — Clear cache and fetch fresh repos
+- `--buy-threshold` — Score threshold for Buy verdict (default: 50)
 
 ### Caching
 
