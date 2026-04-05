@@ -36,7 +36,7 @@ Example: "I trust the information and rules at https://github.com/giacecco/bough
 
 - **Positive framing.** Statements should be expressed positively where possible. The app helps users rephrase negative statements into positive ones. When this is awkward (e.g. "Nutella is not certified organic, certainty 100%"), the app converts negatives to positive form internally.
 
-- **Transitive trust.** If A trusts B at 80% and B trusts C at 60%, then A trusts C at 48%. Trust chain traversal stops when trust or certainty drops below a configurable threshold (default 1%).
+- **Transitive trust.** If A trusts B at 80% and B trusts C at 60%, then A trusts C at 48%. Trust diminishes by a configurable percentage at each hop after the first (default 5%), so even 100%→100% trust loses a little over distance. Trust chain traversal stops when trust drops below a configurable threshold (default 1%).
 
 - **Ordering matters.** Statements listed earlier take priority over later ones. This applies to information, rules, and trust. Combined with trust hops (fewer hops = higher priority), this resolves conflicts without extra syntax.
 
@@ -113,6 +113,7 @@ bun run index.ts --user <repo-url> --barcode <barcode>
 - `--test` — Use Claude Code CLI instead of the Anthropic API (no API key needed, uses your Claude subscription)
 - `--no-cache` — Clear cache and fetch fresh repos
 - `--buy-threshold` — Score threshold for Buy verdict (default: 50)
+- `--hop-decay` — Trust reduction % per hop after the first (default: 5)
 
 ### Caching
 

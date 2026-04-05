@@ -90,7 +90,8 @@ export async function computeScore(
   barcode: string,
   repos: ParsedRepo[],
   userRepoUrl: string,
-  trustThreshold: number = 1
+  trustThreshold: number = 1,
+  hopDecay: number = 0.05
 ): Promise<ScoreResult> {
   // Build trust graph
   const trustGraph = new Map<string, TrustEdge[]>();
@@ -105,10 +106,10 @@ export async function computeScore(
   }
 
   // Collect all rules, respecting closeness (user's own rules first, then by hop distance)
-  const allRules = await collectRules(userRepoUrl, repos, trustGraph, trustThreshold);
+  const allRules = await collectRules(userRepoUrl, repos, trustGraph, trustThreshold, hopDecay);
 
   // Collect all information
-  const allInfo = await collectInformation(userRepoUrl, repos, trustGraph, trustThreshold);
+  const allInfo = await collectInformation(userRepoUrl, repos, trustGraph, trustThreshold, hopDecay);
 
   // Find information relevant to this barcode
   const relevantInfo = await findRelevantInfo(barcode, allInfo);
@@ -199,7 +200,8 @@ async function collectRules(
   startUrl: string,
   repos: ParsedRepo[],
   trustGraph: Map<string, TrustEdge[]>,
-  threshold: number
+  threshold: number,
+  hopDecay: number = 0.05
 ): Promise<CollectedRule[]> {
   const results: CollectedRule[] = [];
   const bestTrust = new Map<string, number>();
@@ -251,7 +253,8 @@ async function collectRules(
     const edges = trustGraph.get(url) || [];
     for (const edge of edges) {
       if (edge.trustRules) {
-        await walk(edge.repoUrl, hops + 1, cumulativeTrust * (edge.trustPercent / 100), edge.context);
+        const nextTrust = cumulativeTrust * (edge.trustPercent / 100) * (hops >= 1 ? (1 - hopDecay) : 1);
+        await walk(edge.repoUrl, hops + 1, nextTrust, edge.context);
       }
     }
 
@@ -273,14 +276,15 @@ async function collectInformation(
   startUrl: string,
   repos: ParsedRepo[],
   trustGraph: Map<string, TrustEdge[]>,
-  threshold: number
+  threshold: number,
+  hopDecay: number = 0.05
 ): Promise<CollectedInfo[]> {
   const results: CollectedInfo[] = [];
   const bestTrust = new Map<string, number>();
   const inStack = new Set<string>();
 
-  async function walk(url: string, cumulativeTrust: number, trustContext: string | null) {
-    if (cumulativeTrust < threshold && url !== startUrl) return;
+  async function walk(url: string, hops: number, cumulativeTrust: number, trustContext: string | null) {
+    if (cumulativeTrust < threshold && hops > 0) return;
     if (inStack.has(url)) return;
 
     const trustKey = trustContext ? `${url}|${trustContext}` : url;
@@ -322,14 +326,15 @@ async function collectInformation(
     const edges = trustGraph.get(url) || [];
     for (const edge of edges) {
       if (edge.trustInfo) {
-        await walk(edge.repoUrl, cumulativeTrust * (edge.trustPercent / 100), edge.context);
+        const nextTrust = cumulativeTrust * (edge.trustPercent / 100) * (hops >= 1 ? (1 - hopDecay) : 1);
+        await walk(edge.repoUrl, hops + 1, nextTrust, edge.context);
       }
     }
 
     inStack.delete(url);
   }
 
-  await walk(startUrl, 100, null);
+  await walk(startUrl, 0, 100, null);
   return results;
 }
 

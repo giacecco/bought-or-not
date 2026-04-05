@@ -53,6 +53,7 @@ Five public GitHub repos serve as test data:
 - Output uses nicknames (from the user's trust.md reference links) instead of raw repo URLs
 - Output distinguishes certainty (truth of the fact) from satisfaction (whether the rule is met)
 - Buy/don't-buy threshold is configurable via `--buy-threshold` (default 50)
+- Trust diminishes by a configurable percentage at each hop after the first via `--hop-decay` (default 5%)
 
 ## Workflow
 - Before every commit, check if `README.md` and `CLAUDE.md` need updating and update them if there are relevant changes (new features, CLI flags, files, design decisions, expected output, etc.)

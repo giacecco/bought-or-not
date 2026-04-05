@@ -14,6 +14,7 @@ const { values } = parseArgs({
     test: { type: "boolean", default: false },
     "no-cache": { type: "boolean", default: false },
     "buy-threshold": { type: "string", default: "50" },
+    "hop-decay": { type: "string", default: "5" },
   },
   strict: true,
 });
@@ -27,6 +28,7 @@ if (!values.user || !values.barcode) {
   console.error("  --test       Use Claude Code CLI instead of API (no API key needed)");
   console.error("  --no-cache   Clear cache and fetch fresh repos");
   console.error("  --buy-threshold  Score threshold for Buy verdict (default: 50)");
+  console.error("  --hop-decay  Trust reduction % per hop after the first (default: 5)");
   process.exit(1);
 }
 
@@ -42,6 +44,7 @@ if (values["no-cache"]) {
 
 const threshold = parseFloat(values.threshold!);
 const buyThreshold = parseFloat(values["buy-threshold"]!);
+const hopDecay = parseFloat(values["hop-decay"]!) / 100;
 
 function displayResult(result: ScoreResult, nicknames: Record<string, string>, cached: boolean, buyThreshold: number) {
   const name = (url: string) => nicknames[url] || url;
@@ -154,7 +157,8 @@ const result = await computeScore(
   values.barcode,
   Array.from(parsedRepos.values()),
   values.user,
-  threshold
+  threshold,
+  hopDecay
 );
 
 const userNicknames = parsedRepos.get(values.user)?.nicknames || {};
