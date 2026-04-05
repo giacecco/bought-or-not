@@ -51,7 +51,7 @@ When you query a product, the system:
 1. Collects all relevant rules from your repo and trusted sources. Trust context scoping ensures that rules are only collected from a trusted repo when their context matches the trust edge's context (e.g., trusting someone for "Organic food" only collects their organic-related rules). The LLM determines context matches.
 2. For each rule, finds all relevant information from trusted sources (also context-scoped).
 3. For each source, the LLM determines how much the information satisfies the rule (satisfaction). Scales by trust: `effective_certainty = trust × satisfaction`.
-4. Sources are split into "for" (satisfaction > 50%) and "against" (satisfaction ≤ 50%). Each group is combined using "at least one is right": `combined = 1 - Π(1 - effective_certainty_i)`. For the "against" group, satisfaction is inverted to get anti-certainty. The net result is `combined_for - combined_against`, clamped to [0, 100]. This means contradictory evidence reduces the score rather than being silently ignored.
+4. Sources are split into "for" (satisfaction > 50%) and "against" (satisfaction ≤ 50%). Each group is combined using "at least one is right": `combined = 1 - Π(1 - effective_certainty_i)`. For the "against" group, satisfaction is inverted to get anti-certainty. The net result is `50 + (combined_for - combined_against) / 2`, clamped to [0, 100]. This means: 50% = deadlock (sources disagree equally), 100% = full agreement for, 0% = full agreement against.
 5. Rules with no matching information are excluded from the score (reported as "no data available" rather than dragging the score toward zero).
 6. Computes the weighted average: `score = Σ(weight × combined_certainty) / Σ(weight)`. If all rules lack data, the verdict is "Insufficient data".
 7. When multiple trust paths reach the same repo (diamond topology), the highest-trust path is used.
@@ -127,11 +127,14 @@ Use `--no-cache` to clear all caches and force a fresh run.
 ### Examples
 
 ```bash
-# Nutella — not organic, contains palm oil, questionable tax practices → Don't buy (0.0%)
+# Nutella — not organic, contains palm oil, questionable tax practices → Don't buy (1.6%)
 bun run index.ts --test --user https://github.com/giacecco/bought-or-not-test-giacecco --barcode 3017620422003
 
 # Nocciolata — organic, palm-oil-free, no tax data available → Buy (100.0%)
 bun run index.ts --test --user https://github.com/giacecco/bought-or-not-test-giacecco --barcode 8052575090254
+
+# Nocciolata 270g — Soil Association says organic, Paola disagrees → deadlock (50.0%)
+bun run index.ts --test --user https://github.com/giacecco/bought-or-not-test-giacecco --barcode 8052575090247
 ```
 
 ### LLM backends

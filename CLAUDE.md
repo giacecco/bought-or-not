@@ -34,7 +34,7 @@ Five public GitHub repos serve as test data:
 - All statements (information, rules, trust) are Markdown in git repos
 - Users are identified by their git repository URL
 - Nicknames for repo URLs use Markdown reference link syntax, declared per file
-- Scoring splits sources into "for" (satisfaction > 50%) and "against" (satisfaction ≤ 50%) groups. Each group is combined using "at least one is right" (`1 - Π(1 - eci)`), then net = for - against, clamped to [0, 100]. Contradictory evidence reduces the score.
+- Scoring splits sources into "for" (satisfaction > 50%) and "against" (satisfaction ≤ 50%) groups. Each group is combined using "at least one is right" (`1 - Π(1 - eci)`), then `net = 50 + (for - against) / 2`, clamped to [0, 100]. 50% = deadlock, 100% = full agreement for, 0% = full agreement against.
 - Rules with no matching information are excluded from the weighted average ("no data" ≠ "fails"). If all rules lack data, verdict is "Insufficient data".
 - No rule deduplication: all rules from all trusted sources are included. Trust weighting naturally handles priority.
 - Trust context scoping is enforced: when following a trust edge (e.g., "Organic food"), only rules/info whose context matches (determined by LLM) are collected from the target repo. The user's own rules/info are always collected unconditionally.
@@ -69,4 +69,4 @@ bun run index.ts --no-cache --user <repo-url> --barcode <barcode>
 ```
 
 ## Expected test output
-Running with `--user https://github.com/giacecco/bought-or-not-test-giacecco --barcode 3017620422003` (Nutella) should produce a score of **0.0%** with verdict "Don't buy". The score dropped from the previous 4.6% because: (1) the for/against split now treats satisfaction ≤ 50% as contradictory evidence (the tax practices source at 49% satisfaction now nets to 0%), and (2) all organic/ingredients rules correctly score 0% since Nutella is not organic and contains palm oil.
+Running with `--user https://github.com/giacecco/bought-or-not-test-giacecco --barcode 3017620422003` (Nutella) should produce a score of **1.6%** with verdict "Don't buy".

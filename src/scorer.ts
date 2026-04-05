@@ -155,11 +155,11 @@ export async function computeScore(
             )) *
           100;
 
-    // Net: for minus against, clamped to [0, 100]
+    // Net: 50% = deadlock, 100% = full agreement for, 0% = full agreement against
     const combinedCertainty =
       sources.length === 0
         ? 0
-        : Math.max(0, Math.min(100, combinedFor - combinedAgainst));
+        : Math.max(0, Math.min(100, 50 + (combinedFor - combinedAgainst) / 2));
 
     const hasData = sources.length > 0;
 
