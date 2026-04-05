@@ -133,9 +133,6 @@ bun run index.ts --test --user https://github.com/giacecco/bought-or-not-test-gi
 
 # Nocciolata — organic, palm-oil-free, no tax data available → Buy (100.0%)
 bun run index.ts --test --user https://github.com/giacecco/bought-or-not-test-giacecco --barcode 8052575090254
-
-# Nocciolata 270g — Soil Association says organic, Paola disagrees → deadlock (50.0%)
-bun run index.ts --test --user https://github.com/giacecco/bought-or-not-test-giacecco --barcode 8052575090247
 ```
 
 ### LLM backends
