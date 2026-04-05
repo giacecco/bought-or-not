@@ -82,7 +82,35 @@ See the `examples/` directory for a complete worked example with multiple users.
 
 The LLM is used at both ingestion time (parsing natural language Markdown into computable data) and query time (reasoning over statements to produce a score). The LLM does not browse the web or contribute its own information — it only works with what is in the repositories.
 
-## The app
+## CLI prototype
+
+A working prototype is available as a Bun/TypeScript CLI.
+
+### Usage
+
+```bash
+bun install
+bun run index.ts --user <repo-url> --barcode <barcode>
+```
+
+### Options
+
+- `--user` — GitHub repo URL of the user
+- `--barcode` — Product barcode to evaluate
+- `--threshold` — Trust/certainty cutoff % (default: 1)
+- `--test` — Use Claude Code CLI instead of the Anthropic API (no API key needed, uses your Claude subscription)
+- `--no-cache` — Clear cache and fetch fresh repos
+
+### Caching
+
+Cloned repos and their parsed LLM results are cached in `.cache/` for 24 hours. Cached runs skip all parsing LLM calls. Use `--no-cache` to force a fresh fetch.
+
+### LLM backends
+
+- **API** (default): requires an `ANTHROPIC_API_KEY` in `.env`
+- **CLI** (`--test`): shells out to `claude -p`, using your Claude Code / Max subscription
+
+## The app (future)
 
 - Scan a product barcode to get a score in real time.
 - A simple breakdown of contributing rules and sources is available but not forced on the user.
