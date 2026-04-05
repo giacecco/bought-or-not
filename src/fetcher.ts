@@ -2,6 +2,7 @@ import { readdir, readFile, mkdir, writeFile, rm } from "fs/promises";
 import { join } from "path";
 import { createHash } from "crypto";
 import type { ParsedRepo } from "./parser";
+import type { ScoreResult } from "./scorer";
 
 const CACHE_DIR = join(import.meta.dir, "..", ".cache");
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
@@ -63,6 +64,63 @@ export async function getCachedParsed(repoUrl: string): Promise<ParsedRepo | nul
 export async function saveParsedCache(repoUrl: string, parsed: ParsedRepo): Promise<void> {
   const cacheDir = repoCacheDir(repoUrl);
   await writeFile(parsedCachePath(cacheDir), JSON.stringify(parsed));
+}
+
+// --- Assessment cache ---
+
+function assessmentCachePath(userRepoUrl: string, barcode: string, threshold: number): string {
+  const key = `${userRepoUrl}|${barcode}|${threshold}`;
+  const hash = createHash("sha256").update(key).digest("hex").slice(0, 16);
+  return join(CACHE_DIR, `assessment-${hash}.json`);
+}
+
+interface AssessmentCache {
+  cachedAt: number;
+  userRepoUrl: string;
+  barcode: string;
+  threshold: number;
+  result: ScoreResult;
+  nicknames: Record<string, string>;
+}
+
+export interface CachedAssessment {
+  result: ScoreResult;
+  nicknames: Record<string, string>;
+}
+
+export async function getCachedAssessment(
+  userRepoUrl: string,
+  barcode: string,
+  threshold: number
+): Promise<CachedAssessment | null> {
+  const path = assessmentCachePath(userRepoUrl, barcode, threshold);
+  try {
+    const data: AssessmentCache = JSON.parse(await readFile(path, "utf-8"));
+    if (Date.now() - data.cachedAt >= CACHE_TTL_MS) return null;
+    return { result: data.result, nicknames: data.nicknames || {} };
+  } catch {
+    return null;
+  }
+}
+
+export async function saveAssessmentCache(
+  userRepoUrl: string,
+  barcode: string,
+  threshold: number,
+  result: ScoreResult,
+  nicknames: Record<string, string>
+): Promise<void> {
+  await mkdir(CACHE_DIR, { recursive: true });
+  const path = assessmentCachePath(userRepoUrl, barcode, threshold);
+  const data: AssessmentCache = {
+    cachedAt: Date.now(),
+    userRepoUrl,
+    barcode,
+    threshold,
+    result,
+    nicknames,
+  };
+  await writeFile(path, JSON.stringify(data));
 }
 
 export async function fetchRepo(repoUrl: string): Promise<RepoFiles> {

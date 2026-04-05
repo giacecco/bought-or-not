@@ -7,6 +7,12 @@ export interface ParsedInfo {
   isNegative: boolean;
 }
 
+export interface ApiInfo {
+  context: string;
+  apiUrlTemplate: string;
+  instructions: string;
+}
+
 export interface ParsedRule {
   context: string;
   statement: string;
@@ -26,6 +32,8 @@ export interface ParsedRepo {
   information: ParsedInfo[];
   rules: ParsedRule[];
   trust: ParsedTrust[];
+  apiInfo: ApiInfo[];
+  nicknames: Record<string, string>; // repoUrl → nickname
 }
 
 export async function parseRepoFiles(
@@ -45,12 +53,43 @@ export async function parseRepoFiles(
   );
 
   const trust = trustFile ? await parseTrust(trustFile.content) : [];
+  const nicknames = trustFile ? extractNicknames(trustFile.content) : {};
   const rules = await parseRules(ruleFiles.map((f) => f.content).join("\n\n"));
-  const information = await parseInformation(
+  const allInfo = await parseInformation(
     infoFiles.map((f) => f.content).join("\n\n")
   );
 
-  return { repoUrl, information, rules, trust };
+  const information: ParsedInfo[] = [];
+  const apiInfo: ApiInfo[] = [];
+
+  for (const entry of allInfo) {
+    if ((entry as any).type === "api" && (entry as any).apiUrlTemplate) {
+      apiInfo.push({
+        context: entry.context,
+        apiUrlTemplate: (entry as any).apiUrlTemplate,
+        instructions: (entry as any).instructions,
+      });
+    } else {
+      information.push({
+        context: entry.context,
+        statement: (entry as any).statement,
+        certainty: (entry as any).certainty,
+        isNegative: (entry as any).isNegative,
+      });
+    }
+  }
+
+  return { repoUrl, information, rules, trust, apiInfo, nicknames };
+}
+
+function extractNicknames(content: string): Record<string, string> {
+  const nicknames: Record<string, string> = {};
+  const regex = /^\[([^\]]+)\]:\s*(https?:\/\/\S+)/gm;
+  let match;
+  while ((match = regex.exec(content)) !== null) {
+    nicknames[match[2]] = match[1];
+  }
+  return nicknames;
 }
 
 async function parseTrust(content: string): Promise<ParsedTrust[]> {
@@ -95,20 +134,31 @@ ${content}`;
   return parseJSON(result);
 }
 
-async function parseInformation(content: string): Promise<ParsedInfo[]> {
+async function parseInformation(content: string): Promise<any[]> {
   if (!content.trim()) return [];
 
-  const prompt = `Parse the following Markdown information statements into structured JSON.
+  const prompt = `Parse the following Markdown information file into structured JSON.
 
-Ignore any "About us" sections — only parse factual statements about products, producers, or practices.
+Ignore any "About us" sections.
 
-Return a JSON array where each element has:
-- "context": the section heading (e.g. "Organic food")
-- "statement": the factual claim, expressed positively (e.g. "Nutella is certified organic")
-- "certainty": the certainty as a number 0-100. If the original statement is negative (e.g. "is NOT certified organic, certainty 100%"), convert: the positive certainty is 100 minus the stated certainty. So "not organic, certainty 100%" becomes certainty 0 for "is organic".
-- "isNegative": true if the original statement was expressed negatively and you converted it
+There are two kinds of entries:
 
-Return ONLY the JSON array, no other text.
+1. **Static factual statements** — direct claims about products, producers, or practices (e.g. "Nutella is not certified organic, certainty 100%").
+   For each, return:
+   - "type": "static"
+   - "context": the section heading (e.g. "Organic food")
+   - "statement": the factual claim, expressed positively (e.g. "Nutella is certified organic")
+   - "certainty": 0-100. If the original statement is negative (e.g. "is NOT certified organic, certainty 100%"), convert: the positive certainty is 100 minus the stated certainty. So "not organic, certainty 100%" becomes certainty 0 for "is organic".
+   - "isNegative": true if the original statement was expressed negatively and you converted it
+
+2. **API-backed instructions** — descriptions of how to fetch information from an API, typically starting with "To check..." or "To find out..." (e.g. "To check if a food product is certified organic, call GET https://...").
+   For each, return:
+   - "type": "api"
+   - "context": the section heading (e.g. "Organic food")
+   - "apiUrlTemplate": the API URL exactly as written, preserving any {barcode} placeholder
+   - "instructions": the full text describing how to call the API and interpret the response
+
+Return ONLY a JSON array, no other text.
 
 Content:
 ${content}`;

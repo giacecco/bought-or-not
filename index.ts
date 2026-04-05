@@ -1,7 +1,8 @@
 import { parseArgs } from "util";
-import { fetchRepo, clearCache, getCachedParsed, saveParsedCache } from "./src/fetcher";
+import { fetchRepo, clearCache, getCachedParsed, saveParsedCache, getCachedAssessment, saveAssessmentCache, type CachedAssessment } from "./src/fetcher";
 import { parseRepoFiles, type ParsedRepo } from "./src/parser";
-import { computeScore } from "./src/scorer";
+import { resolveApiInfo } from "./src/resolver";
+import { computeScore, type ScoreResult } from "./src/scorer";
 import { setBackend } from "./src/llm";
 
 const { values } = parseArgs({
@@ -39,6 +40,47 @@ if (values["no-cache"]) {
 
 const threshold = parseFloat(values.threshold!);
 
+function displayResult(result: ScoreResult, nicknames: Record<string, string>, cached: boolean) {
+  const name = (url: string) => nicknames[url] || url;
+
+  console.log(`═══════════════════════════════════════════`);
+  console.log(`  Bought Or Not — Score: ${result.score.toFixed(1)}%${cached ? " (cached)" : ""}`);
+  console.log(`═══════════════════════════════════════════\n`);
+
+  if (result.ruleScores.length === 0) {
+    console.log("  No rules found relevant to this product.\n");
+  } else {
+    for (const rs of result.ruleScores) {
+      console.log(`  Rule: "${rs.rule.statement}" (weight: ${rs.rule.weight})`);
+      console.log(`  Context: ${rs.rule.context}`);
+      console.log(`  Satisfaction: ${rs.combinedCertainty.toFixed(1)}%`);
+      if (rs.sources.length === 0) {
+        console.log(`  Sources: none found`);
+      } else {
+        for (const s of rs.sources) {
+          console.log(
+            `    - ${name(s.repoUrl)}: "${s.statement}" (certainty ${s.certainty.toFixed(0)}%, satisfaction ${s.satisfaction.toFixed(0)}%, trust ${s.trust.toFixed(0)}%, effective ${s.effectiveCertainty.toFixed(1)}%)`
+          );
+        }
+      }
+      console.log();
+    }
+  }
+
+  console.log(`  Total weight: ${result.totalWeight}`);
+  console.log(
+    `  Verdict: ${result.score >= 50 ? "Buy" : "Don't buy"} (${result.score.toFixed(1)}%)\n`
+  );
+}
+
+// Check for cached assessment
+const cached = await getCachedAssessment(values.user, values.barcode, threshold);
+if (cached) {
+  console.log(`Using cached assessment for barcode ${values.barcode}\n`);
+  displayResult(cached.result, cached.nicknames, true);
+  process.exit(0);
+}
+
 console.log(`Fetching repos and walking trust chain...\n`);
 
 const parsedRepos = new Map<string, ParsedRepo>();
@@ -54,7 +96,7 @@ async function fetchAndParse(repoUrl: string): Promise<void> {
     console.log(`  Using cached + parsed ${repoUrl}`);
     parsedRepos.set(repoUrl, cachedParsed);
     // Walk trust edges in parallel
-    const nextUrls = cachedParsed.trust
+    const nextUrls = (cachedParsed.trust || [])
       .filter((t) => t.trustPercent >= threshold)
       .map((t) => t.repoUrl);
     await Promise.all(nextUrls.map(fetchAndParse));
@@ -77,6 +119,17 @@ async function fetchAndParse(repoUrl: string): Promise<void> {
 
 await fetchAndParse(values.user);
 
+// Resolve API-backed information for the queried barcode
+for (const [repoUrl, parsed] of parsedRepos) {
+  const apiInfos = parsed.apiInfo || [];
+  if (apiInfos.length > 0) {
+    console.log(`  Resolving API info from ${repoUrl}...`);
+    const resolved = await resolveApiInfo(values.barcode, apiInfos);
+    parsed.information.push(...resolved);
+    console.log(`    Resolved ${resolved.length} statements`);
+  }
+}
+
 console.log(`\nLoaded ${parsedRepos.size} repos. Computing score...\n`);
 
 const result = await computeScore(
@@ -86,32 +139,8 @@ const result = await computeScore(
   threshold
 );
 
-// Display results
-console.log(`═══════════════════════════════════════════`);
-console.log(`  Bought Or Not — Score: ${result.score.toFixed(1)}%`);
-console.log(`═══════════════════════════════════════════\n`);
+const userNicknames = parsedRepos.get(values.user)?.nicknames || {};
 
-if (result.ruleScores.length === 0) {
-  console.log("  No rules found relevant to this product.\n");
-} else {
-  for (const rs of result.ruleScores) {
-    console.log(`  Rule: "${rs.rule.statement}" (weight: ${rs.rule.weight})`);
-    console.log(`  Context: ${rs.rule.context}`);
-    console.log(`  Satisfaction: ${rs.combinedCertainty.toFixed(1)}%`);
-    if (rs.sources.length === 0) {
-      console.log(`  Sources: none found`);
-    } else {
-      for (const s of rs.sources) {
-        console.log(
-          `    - ${s.repoUrl}: "${s.statement}" (certainty ${s.certainty.toFixed(0)}%, trust ${s.trust.toFixed(0)}%, effective ${s.effectiveCertainty.toFixed(1)}%)`
-        );
-      }
-    }
-    console.log();
-  }
-}
+await saveAssessmentCache(values.user, values.barcode, threshold, result, userNicknames);
 
-console.log(`  Total weight: ${result.totalWeight}`);
-console.log(
-  `  Verdict: ${result.score >= 50 ? "Buy" : "Don't buy"} (${result.score.toFixed(1)}%)\n`
-);
+displayResult(result, userNicknames, false);

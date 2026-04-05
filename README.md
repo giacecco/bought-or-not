@@ -14,7 +14,11 @@ Each user publishes three types of statements as Markdown files in a git reposit
 
 Facts about products, producers, or practices, each with a certainty percentage. If certainty is not stated, it is assumed to be 100%.
 
-Example: "Nutella (barcode 3017620422003) made by Ferrero is not certified organic, certainty 100%"
+Information can be **static** (direct statements) or **API-backed** (instructions for fetching data from an external API at query time).
+
+Static example: "Nutella (barcode 3017620422003) made by Ferrero is not certified organic, certainty 100%"
+
+API-backed example: "To check if a food product is certified organic, call GET https://example.com/api/product/{barcode}.json and look at the `labels_tags` array..."
 
 ### Rules
 
@@ -76,11 +80,17 @@ The nickname can then be used naturally throughout the file in any statement. Ea
 
 All files include the comment: `<!-- Statements listed earlier take priority over later ones -->`
 
-For a complete worked example with four users, see the test repos listed in CLAUDE.md.
+For a complete worked example with five users (including an API-backed source), see the test repos listed in CLAUDE.md.
+
+### API-backed information
+
+Instead of writing static statements, an information publisher can describe how to fetch data from an external API. Each context section contains instructions: which URL to call (with `{barcode}` as a placeholder), which fields to inspect, and how to interpret the response.
+
+At query time, the system calls the API for the specific barcode being evaluated, then uses the LLM to interpret the response according to the instructions and produce concrete statements. This allows large databases like Open Food Facts to participate as information sources without mirroring their entire dataset into Markdown.
 
 ## Role of the LLM
 
-The LLM is used at both ingestion time (parsing natural language Markdown into computable data) and query time (reasoning over statements to produce a score). The LLM does not browse the web or contribute its own information — it only works with what is in the repositories.
+The LLM is used at both ingestion time (parsing natural language Markdown into computable data) and query time (reasoning over statements to produce a score, and interpreting API responses for API-backed information sources). The LLM does not browse the web or contribute its own information — it only works with what is in the repositories and what is returned by API calls described in those repositories.
 
 ## CLI prototype
 

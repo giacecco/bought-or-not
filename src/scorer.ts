@@ -7,6 +7,7 @@ export interface RuleScore {
     repoUrl: string;
     statement: string;
     certainty: number;
+    satisfaction: number;
     trust: number;
     effectiveCertainty: number;
   }[];
@@ -64,7 +65,8 @@ export async function computeScore(
     const sources = matchingInfo.map((m) => ({
       repoUrl: m.repoUrl,
       statement: m.info.statement,
-      certainty: m.satisfactionCertainty,
+      certainty: m.info.certainty,
+      satisfaction: m.satisfactionCertainty,
       trust: m.effectiveTrust,
       effectiveCertainty: (m.effectiveTrust / 100) * (m.satisfactionCertainty / 100) * 100,
     }));
