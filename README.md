@@ -64,6 +64,16 @@ information.md        — facts you know (or information/ directory for large pu
 
 Best practice: include an about-us section or file describing who the publisher is.
 
+### Nicknames
+
+Users are identified by their git repository URL, but URLs are hard to read. Any file can declare nicknames at the top:
+
+```
+In the following, I call https://github.com/giacecco/bought-or-not-test-soil-association the Soil Association.
+```
+
+The nickname can then be used naturally throughout the file in any statement.
+
 All files include the comment: `<!-- Statements listed earlier take priority over later ones -->`
 
 See the `examples/` directory for a complete worked example with multiple users.
