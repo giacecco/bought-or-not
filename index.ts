@@ -92,7 +92,9 @@ function displayResult(result: ScoreResult, nicknames: Record<string, string>, c
 const cached = await getCachedAssessment(values.user, values.barcode, threshold);
 if (cached) {
   const expiresAt = new Date(cached.expiresAt);
-  console.log(`Using cached assessment for barcode ${values.barcode} (valid until ${expiresAt.toLocaleString()})\n`);
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const expiresStr = `${expiresAt.getDate()} ${months[expiresAt.getMonth()]} ${expiresAt.getFullYear()}, ${expiresAt.toLocaleTimeString()}`;
+  console.log(`Using cached assessment for barcode ${values.barcode} (valid until ${expiresStr})\n`);
   displayResult(cached.result, cached.nicknames, true, buyThreshold);
   process.exit(0);
 }
