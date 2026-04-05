@@ -45,6 +45,9 @@ Five public GitHub repos serve as test data:
 - Output uses nicknames (from the user's trust.md reference links) instead of raw repo URLs
 - Output distinguishes certainty (truth of the fact) from satisfaction (whether the rule is met)
 
+## Workflow
+- Before every commit, check if `README.md` and `CLAUDE.md` need updating and update them if there are relevant changes (new features, CLI flags, files, design decisions, expected output, etc.)
+
 ## Running
 ```bash
 bun install
