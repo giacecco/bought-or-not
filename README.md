@@ -124,6 +124,16 @@ Three layers of caching in `.cache/`, all with 24-hour TTL:
 
 Use `--no-cache` to clear all caches and force a fresh run.
 
+### Examples
+
+```bash
+# Nutella — not organic, contains palm oil, questionable tax practices → Don't buy (0.0%)
+bun run index.ts --test --user https://github.com/giacecco/bought-or-not-test-giacecco --barcode 3017620422003
+
+# Nocciolata — organic, palm-oil-free, no tax data available → Buy (100.0%)
+bun run index.ts --test --user https://github.com/giacecco/bought-or-not-test-giacecco --barcode 8052575090254
+```
+
 ### LLM backends
 
 - **API** (default): requires an `ANTHROPIC_API_KEY` in `.env`
