@@ -1,5 +1,5 @@
 import { parseArgs } from "util";
-import { fetchRepo } from "./src/fetcher";
+import { fetchRepo, clearCache } from "./src/fetcher";
 import { parseRepoFiles, type ParsedRepo } from "./src/parser";
 import { computeScore } from "./src/scorer";
 import { setBackend } from "./src/llm";
@@ -11,6 +11,7 @@ const { values } = parseArgs({
     barcode: { type: "string" },
     threshold: { type: "string", default: "1" },
     test: { type: "boolean", default: false },
+    "no-cache": { type: "boolean", default: false },
   },
   strict: true,
 });
@@ -22,17 +23,23 @@ if (!values.user || !values.barcode) {
   console.error("  --barcode    Product barcode to evaluate");
   console.error("  --threshold  Trust/certainty cutoff % (default: 1)");
   console.error("  --test       Use Claude Code CLI instead of API (no API key needed)");
+  console.error("  --no-cache   Clear cache and fetch fresh repos");
   process.exit(1);
 }
 
 if (values.test) {
   setBackend("cli");
-  console.log("\nUsing Claude Code CLI backend (no API key needed).\n");
+  console.log("\nUsing Claude Code CLI backend (no API key needed).");
+}
+
+if (values.test || values["no-cache"]) {
+  await clearCache();
+  console.log("  Cache cleared.\n");
 }
 
 const threshold = parseFloat(values.threshold!);
 
-console.log(`\nFetching repos and walking trust chain...\n`);
+console.log(`Fetching repos and walking trust chain...\n`);
 
 // Fetch and parse repos recursively
 const parsedRepos = new Map<string, ParsedRepo>();
@@ -40,9 +47,7 @@ const parsedRepos = new Map<string, ParsedRepo>();
 async function fetchAndParse(repoUrl: string): Promise<void> {
   if (parsedRepos.has(repoUrl)) return;
 
-  console.log(`  Cloning ${repoUrl}...`);
   const repoFiles = await fetchRepo(repoUrl);
-
   console.log(`  Parsing ${repoUrl}...`);
   const parsed = await parseRepoFiles(repoUrl, repoFiles.files);
   parsedRepos.set(repoUrl, parsed);
